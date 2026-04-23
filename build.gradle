@@ -1,0 +1,95 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+    id 'jacoco'
+    id 'com.gradleup.nmcp' version '1.4.4'
+}
+
+group = 'io.github.thgrcarvalho'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+    }
+}
+
+javadoc {
+    options.addStringOption('Xdoclint:all,-missing', '-quiet')
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'pix-webhook-validator'
+                description = 'Zero-dependency Java library for validating Brazilian Pix webhook requests: HMAC-SHA256 signature, IP allowlist (CIDR), and timestamp replay protection.'
+                url = 'https://github.com/thgrcarvalho/pix-webhook-validator'
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'thgrcarvalho'
+                        name = 'Thiago Rodrigues Carvalho'
+                        email = 'thgrcarvalho@gmail.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/thgrcarvalho/pix-webhook-validator.git'
+                    developerConnection = 'scm:git:ssh://github.com/thgrcarvalho/pix-webhook-validator.git'
+                    url = 'https://github.com/thgrcarvalho/pix-webhook-validator'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'staging'
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+signing {
+    def signingKey = findProperty('signingKey')
+    def signingPassword = findProperty('signingPassword')
+    useInMemoryPgpKeys(signingKey, signingPassword)
+    sign publishing.publications.mavenJava
+}
+
+nmcp {
+    publishAllPublicationsToCentralPortal {
+        username = providers.gradleProperty('sonatypeUsername')
+        password = providers.gradleProperty('sonatypePassword')
+        publishingType = 'AUTOMATIC'
+    }
+}
